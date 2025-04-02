@@ -1,6 +1,6 @@
 # Project files
-./server/chats.json
-./server/messages.json
+server/chats.json
+server/messages.json
 
 
 # Byte-compiled / optimized / DLL files

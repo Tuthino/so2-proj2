@@ -1,5 +1,7 @@
 import socket
 import json
+import threading
+from client_handler import ClientHandler
 
 
 # TODO: reading and saving  data from chats.json to some struct // read done
@@ -108,6 +110,9 @@ def read_messages(msg_file, chat_id):
         }
     return result
 
+# global variables
+active_conns = {}
+
 
 def main():
     host = '0.0.0.0'
@@ -120,6 +125,9 @@ def main():
     while True:
         client_conn, client_addr = server_socket.accept()
         print(f"Connect34ed by {client_addr}")
+        client_thread = ClientHandler(
+            client_conn, client_addr, active_conns)
+        client_thread.start()
         try:
             message = "Hello from server"
             client_conn.send(message.encode())
@@ -150,5 +158,5 @@ def test_main():
 
 
 if __name__ == "__main__":
-    # main()
-    test_main()
+    main()
+    # test_main()
