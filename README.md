@@ -10,6 +10,7 @@ Base project assumptions:
 - Client is able to see it's messages with different clients
 - Client is able to send a message to other client
 - Client needs to receive new messsages
+- No client authentication is required, just username
 
 
 
