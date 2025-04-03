@@ -111,30 +111,36 @@ def read_messages(msg_file, chat_id):
     return result
 
 # global variables
+# it is a list, under the active_conns[thread_id] we have the ClientHandler
 active_conns = {}
 
 
 def main():
     host = '0.0.0.0'
-    port = 5001
+    port = 5003
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(5)
     print(f"Server listening on {host}:{port}")
 
-    while True:
-        client_conn, client_addr = server_socket.accept()
-        print(f"Connect34ed by {client_addr}")
-        client_thread = ClientHandler(
-            client_conn, client_addr, active_conns)
-        client_thread.start()
-        try:
-            message = "Hello from server"
-            client_conn.send(message.encode())
-        except Exception as e:
-            print(f"Error sending message: {e}")
-        finally:
-            client_conn.close()
+    try:
+        while True:
+            client_conn, client_addr = server_socket.accept()
+            print(f"Connected by {client_addr}")
+            client_thread = ClientHandler(
+                client_conn, client_addr, active_conns)
+            client_thread.start()
+    except KeyboardInterrupt:
+        print("Server shutting down...")
+    finally:
+        # close all connections and delete threads
+        for thread_id, handler in list(active_conns.items()):
+            handler.close_connection()
+            del active_conns[thread_id]
+            handler.join()
+            print(f"Thread {thread_id}: Connection closed.")
+        server_socket.close()
+        print("Server socket closed.")
 
 
 def test_main():
