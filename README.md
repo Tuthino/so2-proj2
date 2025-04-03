@@ -47,3 +47,23 @@ docker-compose exec  client kill -USR1 <PID>
 
 However, keep in mind, because of how TCP works, the socket needs 60s before closing,  
 and you cannot reuse it before, therefore for quick reloads, you can change the port.
+
+## Implementation information
+### Closing the connection
+Both client and sever have wrappers for ctrl-c shortcut, to close the connection
+sending packet to another node.  
+Server closes all connections and deletes all threads, after deletion, the app shutdown  
+
+There is a `state` variable that indicates if the connection has been closed
+If server closed the connection to client, client prints a message that it is not connected to the server.  
+
+
+### Communication
+Communication is done via json objects.  
+#### Client closes the connection
+When client closes the connection, it sends payload `{"op": "exit"}`, closes the socket.
+Then server closes the socket as well and terminates the thread for this client
+
+#### Server closes the connection
+When server closes the connectin, it sends payload `{"res": {"status": "exit"}}`, closes the socket and terminates the thread.
+Client receiving this payload, closes the socket to server 
