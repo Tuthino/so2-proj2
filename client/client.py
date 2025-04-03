@@ -1,7 +1,6 @@
 import os
 import select
 import socket
-import time
 import json
 
 # TODO: simple tui interface for;
@@ -17,12 +16,14 @@ import json
 # TODO: OPTIONAL server ip and port as input variable when
 # running the app
 
+
 def get_username():
     while True:
         username = input("Enter your username: ").strip()
         if username:
             return username
         print("Username cannot be empty.")
+
 
 def connect():
     # TODO: server ip and port as user input vars
@@ -52,7 +53,7 @@ def receive_message(s):
                 if message_status == "exit":
                     print("Server requested to close the connection.")
                     s.close()
-                    return False 
+                    return False
                 return True
             except json.JSONDecodeError:
                 print(f"Received non-JSON message: {data}")
@@ -61,14 +62,16 @@ def receive_message(s):
     except Exception as e:
         print(f"Error receiving message: {e}")
 
+
 def send_payload(s, payload):
     try:
         s.send(json.dumps(payload).encode())
         print(f"Sent payload: {payload}")
         # TODO: it is possible that we do not need this
-        return receive_message(s) # False if server requested to close conn
+        return receive_message(s)  # False if server requested to close conn
     except Exception as e:
         print(f"Failed to send payload: {e}")
+
 
 def close_connection(s):
     try:
@@ -92,7 +95,7 @@ def check_server_message(s, timeout=0.1):
                 if message_status == "exit":
                     print("Server requested to close the connection.")
                     s.close()
-                    return False 
+                    return False
         except Exception as e:
             print(f"Error receiving data: {e}")
     return None
@@ -109,22 +112,23 @@ def main_menu(user, s, state):
     choice = input("Choose an option: ")
     return choice
 
+
 def main():
     username = get_username()
     s = connect()
-    state = False # indicates if socket is connected
+    state = False  # indicates if socket is connected
     # init empty payload
-    payload = {} # TODO: it is possible that we do not need this
+    payload = {}  # TODO: it is possible that we do not need this
     if not s:
         print("Connection failed. Exiting.")
         return
     state = True
     main_menu_choice = None
-    # this try/catch is needed to catch ctrl-c interrupt 
+    # this try/catch is needed to catch ctrl-c interrupt
     # to close the socket connection before exiting the app
     try:
         while True:
-            if state != False:
+            if state is not True:
                 state = check_server_message(s)
             main_menu_choice = main_menu(username, s, state)
             if main_menu_choice == '1':
@@ -132,27 +136,24 @@ def main():
                 payload = {
                     "username": username,
                     "op": op,
-                    }  
+                }
                 state = send_payload(s, payload)
             elif main_menu_choice == '2':
                 op = "show_chats"
                 payload = {
                     "username": username,
                     "op": op,
-                    }  
+                }
                 state = send_payload(s, payload)
             elif main_menu_choice == '3':
                 op = "chat_with_user"
                 # maybe add here function to fetch usernames first
                 chat_user = input("Enter the username you want to chat with: ")
-                payload_extra = {
-                    "other_username": chat_user
-                }
                 payload = {
                     "username": username,
                     "op": op,
                     "other_username": chat_user
-                    }  
+                }
                 state = send_payload(s, payload)
 
             elif main_menu_choice == '9':
@@ -160,14 +161,11 @@ def main():
                 break
             else:
                 print("Invalid choice. Please try again.")
-                continue 
+                continue
     except KeyboardInterrupt:
         print("Ctrl-C pressed. Closing application.")
     finally:
         close_connection(s)
-
-
-    
 
 
 if __name__ == "__main__":
