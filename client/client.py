@@ -25,16 +25,26 @@ def get_username():
         print("Username cannot be empty.")
 
 
-def connect():
+def connect(username):
     # TODO: server ip and port as user input vars
     host = os.environ.get('SERVER_HOST', 'localhost')
-    port = 5003
+    port = int(os.environ.get('SERVER_PORT', 5003))
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         client_socket.connect((host, port))
-        print(f"Connected to server at {host}:{port}")
-        return client_socket
+        payload = {
+            "username": username,
+            "op": "connect",
+        }
+        _, resp = send_payload(client_socket, payload)
+        if resp.get("res", {}).get("status") == "ok":
+            print(f"Connected to server at {host}:{port}")
+            return client_socket
+        else:
+            print(f"Failed to connect to server: {resp.get('res', {}).get('status')}")
+            close_connection(client_socket)
+            return None
     except Exception as e:
         print(f"Failed to connect to server: {e}")
         return None
@@ -43,6 +53,7 @@ def connect():
 def receive_message(s):
     # if the server sends payload to close the connection
     # this function will return False, otherwise True
+    # we need to return the status of the response as well
     try:
         data = s.recv(1024).decode()
         if data:
@@ -53,8 +64,8 @@ def receive_message(s):
                 if message_status == "exit":
                     print("Server requested to close the connection.")
                     s.close()
-                    return False
-                return True
+                    return False, None
+                return True, message
             except json.JSONDecodeError:
                 print(f"Received non-JSON message: {data}")
         else:
@@ -101,21 +112,29 @@ def check_server_message(s, timeout=0.1):
     return None
 
 
-def main_menu(user, s, state):
+def main_menu(username, state):
     if state == 0:
         print("You are not connected to the server.")
-    print("Main Menu:")
+    print(f"Logged as: {username}, Main Menu:")
     print("1. Show all users")
-    print("2. Show all chats")
-    print("3. Chat with user")
+    print("2. Chat with user")
     print("9. Close application")
     choice = input("Choose an option: ")
     return choice
 
+def chat_menu(username, chat_user):
+    print(f"Logged as: {username}, Chat with {chat_user}:")
+    print("1. Send message")
+    print("2. Show all messages")
+    print("9. Exit chat")
+    choice = input("Choose an option: ")
+    return choice
+
+
 
 def main():
     username = get_username()
-    s = connect()
+    s = connect(username)
     state = False  # indicates if socket is connected
     # init empty payload
     payload = {}  # TODO: it is possible that we do not need this
@@ -128,9 +147,7 @@ def main():
     # to close the socket connection before exiting the app
     try:
         while True:
-            if state is not True:
-                state = check_server_message(s)
-            main_menu_choice = main_menu(username, s, state)
+            main_menu_choice = main_menu(username, state)
             if main_menu_choice == '1':
                 op = "show_users"
                 payload = {
@@ -139,13 +156,6 @@ def main():
                 }
                 state = send_payload(s, payload)
             elif main_menu_choice == '2':
-                op = "show_chats"
-                payload = {
-                    "username": username,
-                    "op": op,
-                }
-                state = send_payload(s, payload)
-            elif main_menu_choice == '3':
                 op = "chat_with_user"
                 # maybe add here function to fetch usernames first
                 chat_user = input("Enter the username you want to chat with: ")
@@ -154,12 +164,43 @@ def main():
                     "op": op,
                     "other_username": chat_user
                 }
-                state = send_payload(s, payload)
+                state, resp = send_payload(s, payload)
+                if resp.get("res", {}).get("status") == "ok":
+                    # chat menu 
+                    while True:
+                        # for this chat we always use the same chat_user
+                        chat_choice = chat_menu(username, chat_user)
+                        if chat_choice == '1':
+                            message = input("Enter your message: ")
+                            payload = {
+                                "username": username,
+                                "op": "send_message",
+                                "other_username": chat_user,
+                                "message": message
+                            }
+                            state = send_payload(s, payload)
+                        elif chat_choice == '2':
+                            payload = {
+                                "username": username,
+                                "other_username": chat_user,
+                                "op": "show_messages",
+                            }
+                            state = send_payload(s, payload)
+                        elif chat_choice == '9':
+                            print("Exiting chat.")
+                            break
+                        else:
+                            state = check_server_message(s)
+                            print("Invalid choice. Please try again.")
+                            continue
+
+
 
             elif main_menu_choice == '9':
                 print("Closing application.")
                 break
             else:
+                state = check_server_message(s)
                 print("Invalid choice. Please try again.")
                 continue
     except KeyboardInterrupt:
