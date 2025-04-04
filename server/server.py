@@ -6,11 +6,11 @@ from client_handler import ClientHandler
 
 # TODO: reading and saving  data from chats.json to some struct // read done
 # reading and saving  data from messages.json to some struct // read done
-# maybe overwrite the ctrl-c for graceful shutdown with sving data, or some other kill number
-# create a logic for handling the user connection (username could be in the thread variable)
-# create thread for every connectino to the server
-# sending all messages to the client from the chat
-# all data needs to be received, sent and saved as json
+# maybe overwrite the ctrl-c for graceful shutdown with sving data, or some other kill number /done
+# create a logic for handling the user connection (username could be in the thread variable) /done
+# create thread for every connectino to the server /done
+# sending all messages to the client from the chat /missing automatic synchro
+# all data needs to be received, sent and saved as json /done
 
 # TODO: OPTIONAL perform saving procedure after X seconds/minutes or call
 
