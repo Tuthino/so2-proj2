@@ -11,7 +11,7 @@ import hashlib
 
 
 class ClientHandler(threading.Thread):
-    def __init__(self, client_conn, client_addr, active_conns,users_lock, messages_lock, users_file, msg_file):
+    def __init__(self, client_conn, client_addr, active_conns, users_lock, messages_lock, users_file, msg_file):
         super().__init__()
         self.client_conn = client_conn
         self.client_addr = client_addr
@@ -20,7 +20,7 @@ class ClientHandler(threading.Thread):
         self.messages_lock = messages_lock
         self.users_file = users_file
         self.msg_file = msg_file
-        self.username = None 
+        self.username = None
         self.state = True  # indicates if socket is connected
         self.thread_id = None
 
@@ -29,7 +29,7 @@ class ClientHandler(threading.Thread):
         try:
             response = {
                 "res": {
-                    "status": "exit",
+                    "status": "exit"
                 }
             }
             self.send_response(response)
@@ -53,7 +53,7 @@ class ClientHandler(threading.Thread):
             if getattr(handler, "username", None) == other_username:
                 print(f"Found handler for user {other_username}")
                 try:
-                    # Build a notification payload; 
+                    # Build a notification payload;
                     notification = {
                         "res": {
                             "status": "new_message",
@@ -67,7 +67,6 @@ class ClientHandler(threading.Thread):
                 except Exception as e:
                     print(f"Failed to notify user {other_username}: {e}")
                 break
-
 
     def read_messages_for_chatid(self, chat_id):
         # WARNING!!!! we do not lock here.
@@ -88,10 +87,9 @@ class ClientHandler(threading.Thread):
             }
         else:
             result = {
-                "error": f"No messages found for chat this chat"
+                "error": "No messages found for chat this chat"
             }
         return result
-
 
     def get_usernames(self):
         # add lock for users here
@@ -107,14 +105,13 @@ class ClientHandler(threading.Thread):
                         }
                     }
                 }
-            
+
             return resp
-        
-    
+
     def add_message_for_chatid(self, msg_file, chat_id, payload):
         # reads the messages from file (if needed), finds the chat entry for chat_id,
         # appends new_message, then persists the updated messages back to the file.
-        # lock the messsages file, so other thread does interfere 
+        # lock the messsages file, so other thread does interfere
         with self.messages_lock:
             messages = []
             try:
@@ -127,15 +124,16 @@ class ClientHandler(threading.Thread):
             # find the chat entry for the given chat_id, create one if not found
             # however the chat should be already created when we enter the chat with other user
             # TODO: check if this is needed
-            chat_entry = next((entry for entry in messages if entry.get("chat_id") == chat_id), None)
+            chat_entry = next(
+                (entry for entry in messages if entry.get("chat_id") == chat_id), None)
             if chat_entry is None:
                 chat_entry = {"chat_id": chat_id, "messages": []}
                 messages.append(chat_entry)
 
-            # append the new message; 
+            # append the new message;
             chat_entry["messages"].append({
-                "sender": payload.get("username"), 
-                "text": payload.get("message"), 
+                "sender": payload.get("username"),
+                "text": payload.get("message"),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             })
 
@@ -145,8 +143,7 @@ class ClientHandler(threading.Thread):
                     json.dump(messages, file, indent=4)
                 response = {
                     "res": {
-                        "status": "ok",
-                        "body": "Message appended successfully."
+                        "status": "ok"
                     }
                 }
                 self.send_response(response)
@@ -154,7 +151,7 @@ class ClientHandler(threading.Thread):
                 response = {
                     "res": {
                         "status": "error",
-                        "body": f"Failed to update messages file: "
+                        "body": "Failed to update messages file"
                     }
                 }
                 print(f"Error writing messages file: {e}")
@@ -180,13 +177,14 @@ class ClientHandler(threading.Thread):
             with self.users_lock:
                 with open(self.users_file, 'r') as file:
                     users_json = json.load(file)
-                    users_exists = any(user.get("username") == username for user in users_json)
+                    users_exists = any(user.get("username")
+                                       == username for user in users_json)
                     self.username = username
                     if users_exists:
                         pass
                         resp = {
                             "res": {
-                                "status": "ok",
+                                "status": "ok"
                             }
                         }
                         self.send_response(resp)
@@ -203,7 +201,7 @@ class ClientHandler(threading.Thread):
                             json.dump(users_json, file, indent=4)
                         resp = {
                             "res": {
-                                "status": "ok",
+                                "status": "ok"
                             }
                         }
                         self.send_response(resp)
@@ -227,7 +225,7 @@ class ClientHandler(threading.Thread):
         print(f"process payload: {payload}")
 
         if payload.get("op") == "connect":
-            if  payload.get("username") is not None:
+            if payload.get("username") is not None:
                 self.connect_user(payload.get("username"))
             else:
                 response = {
@@ -245,8 +243,6 @@ class ClientHandler(threading.Thread):
             print(f"Client {self.client_addr} requested to show users.")
             self.send_response(resp)
 
-
-
         elif payload.get("op") == "chat_with_user":
             # the only check here we need is to check if other_username exists in users.json
             users = self.get_usernames().get("res").get("body").get("users")
@@ -260,12 +256,12 @@ class ClientHandler(threading.Thread):
                 }
                 self.send_response(resp)
                 return
-            else: 
-                print(f"Username  {other_username} found, sending confirmation")
+            else:
+                print(f"Username  {
+                      other_username} found, sending confirmation")
                 resp = {
                     "res": {
-                        "status": "ok",
-                        "body": f"Username with {other_username}  found."
+                        "status": "ok"
                     }
                 }
                 self.send_response(resp)
@@ -289,12 +285,8 @@ class ClientHandler(threading.Thread):
                 pass
 
         elif payload.get("op") == "send_message":
-            # here we need to add the message to the file
-            # we do not actually send the message to the other user yet
-            # maybe TODO: later
-
-
-            # if the other_username matches, then we already have the chat_id
+            # checks if other username exists, caluculate chat hash
+            # if username exists, add message and notify other user
             username = payload.get("username")
             other_username = payload.get("other_username")
 
@@ -313,15 +305,8 @@ class ClientHandler(threading.Thread):
                 # here we need to add the message to the file
                 self.add_message_for_chatid("messages.json", chat_id, payload)
                 self.notify_user(other_username, payload)
-        
-        # print(f"Client {self.client_addr} sent invalid payload: {payload}")
+
         return
-
-
-
-
-
-
 
     def run(self):
         thread_id = threading.get_ident()
@@ -331,7 +316,8 @@ class ClientHandler(threading.Thread):
         self.client_conn.settimeout(1.0)
         try:
             # this loop is needed to keep the connection open until
-            # client send payload 'op': 'exit'
+            # either we close the connection, and the self.state = False
+            # or client send payload 'op': 'exit'
             while self.state:
 
                 try:
