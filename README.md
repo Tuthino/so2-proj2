@@ -70,8 +70,7 @@ Client receiving this payload, closes the socket to server
 
 ### Preventing race conditions
 Every read and write operation is to/from the shared file (either chats.json or messages.json).
-It is important to note, that we cannot lock mutex, inside the functions that operates on file.  
-Because if we lock only inside function `read_messages_for_chatid()` or `read_chats()` and `add_message_for_chatid`
+It is important to note, that we cannot lock mutex, only for file read/write time, because 
 we could have a race_condition. For example one thread1 would read the messages, unlock the mutex, do some operation and in this time of processing, other thread2 could write to the `messages.json`. 
 In that situation, if our thread wants to save message to `messages.json`, it would overwrite 
 messages that thread2 saved during the thread1 processing.   
